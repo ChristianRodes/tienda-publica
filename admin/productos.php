@@ -2,9 +2,8 @@
 require '../includes/auth.php';
 require '../config/db.php';
 
-/* ===============================
-   BAJA LÓGICA (ACTIVAR / DESACTIVAR)
-   =============================== */
+/* Activar / Desactivar */
+
 if (isset($_GET['desactivar'])) {
     $id = (int) $_GET['desactivar'];
     $stmt = $pdo->prepare("UPDATE productos SET activo = 0 WHERE id = :id");
@@ -21,9 +20,8 @@ if (isset($_GET['activar'])) {
     exit;
 }
 
-/* ===============================
-   CREAR PRODUCTO
-   =============================== */
+/* Crear */
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $nombre = trim($_POST['nombre'] ?? '');
@@ -45,9 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-/* ===============================
-   DATOS PARA LA VISTA
-   =============================== */
+/* Tablas */
+
 $categorias = $pdo->query(
     "SELECT * FROM categorias WHERE activa = 1"
 )->fetchAll();
@@ -105,6 +102,7 @@ include '../includes/header.php';
             <td><?= htmlspecialchars($prod['categoria']) ?></td>
             <td><?= $prod['activo'] ? 'Activo' : 'Inactivo' ?></td>
             <td>
+                <a href="editar_producto.php?id=<?= $prod['id'] ?>">Editar</a> |
                 <?php if ($prod['activo']): ?>
                     <a href="?desactivar=<?= $prod['id'] ?>">Desactivar</a>
                 <?php else: ?>
