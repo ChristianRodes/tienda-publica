@@ -1,38 +1,38 @@
 <?php
 session_start();
 require '../config/db.php';
+include '../includes/header.php';
 
-/* Inicializar carrito */
+/* Inicializar carrito si no existe */
 if (!isset($_SESSION['carrito'])) {
     $_SESSION['carrito'] = [];
 }
 
 /* ===============================
-   AÑADIR PRODUCTO DESDE LA TIENDA
+   AÑADIR PRODUCTO
    =============================== */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
+if (isset($_POST['id'])) {
     $id = (int) $_POST['id'];
 
-    if (isset($_SESSION['carrito'][$id])) {
-        $_SESSION['carrito'][$id]['cantidad']++;
-    } else {
-        $stmt = $pdo->prepare("SELECT nombre, precio FROM productos WHERE id = :id AND activo = 1");
-        $stmt->execute([':id' => $id]);
-        $producto = $stmt->fetch();
+    $stmt = $pdo->prepare("SELECT * FROM productos WHERE id = :id AND activo = 1");
+    $stmt->execute([':id' => $id]);
+    $producto = $stmt->fetch();
 
-        if ($producto) {
+    if ($producto) {
+        if (isset($_SESSION['carrito'][$id])) {
+            $_SESSION['carrito'][$id]['cantidad']++;
+        } else {
             $_SESSION['carrito'][$id] = [
                 'nombre' => $producto['nombre'],
                 'precio' => $producto['precio'],
                 'cantidad' => 1
             ];
         }
+
+        $_SESSION['mensaje_carrito'] = 'Producto añadido al carrito';
     }
 
-    // Mensaje flash
-    $_SESSION['mensaje_carrito'] = 'Producto añadido al carrito';
-
-    // Redirección según origen
+    /* Volver a index si venía de ahí */
     if (isset($_POST['redirect']) && $_POST['redirect'] === 'index') {
         header('Location: index.php');
         exit;
@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
 }
 
 /* ===============================
-   SUMAR / RESTAR / ELIMINAR
+   INCREMENTAR / DECREMENTAR
    =============================== */
 if (isset($_GET['sumar'])) {
     $id = (int) $_GET['sumar'];
@@ -59,12 +59,17 @@ if (isset($_GET['restar'])) {
     }
 }
 
+/* ===============================
+   ELIMINAR PRODUCTO
+   =============================== */
 if (isset($_GET['eliminar'])) {
     $id = (int) $_GET['eliminar'];
     unset($_SESSION['carrito'][$id]);
 }
 
-include '../includes/header.php';
+/* ===============================
+   MOSTRAR CARRITO
+   =============================== */
 ?>
 
 <h2>Carrito de la compra</h2>
@@ -72,6 +77,7 @@ include '../includes/header.php';
 <?php if (empty($_SESSION['carrito'])): ?>
     <p>El carrito está vacío.</p>
     <a href="index.php">Volver a la tienda</a>
+
 <?php else: ?>
 
 <table border="1" cellpadding="6">
@@ -80,7 +86,7 @@ include '../includes/header.php';
         <th>Precio</th>
         <th>Cantidad</th>
         <th>Subtotal</th>
-        <th>Acción</th>
+        <th>Acciones</th>
     </tr>
 
     <?php
@@ -93,9 +99,9 @@ include '../includes/header.php';
             <td><?= htmlspecialchars($item['nombre']) ?></td>
             <td><?= number_format($item['precio'], 2) ?> €</td>
             <td>
-                <a href="?restar=<?= $id ?>">➖</a>
+                <a href="?restar=<?= $id ?>">−</a>
                 <?= $item['cantidad'] ?>
-                <a href="?sumar=<?= $id ?>">➕</a>
+                <a href="?sumar=<?= $id ?>">+</a>
             </td>
             <td><?= number_format($subtotal, 2) ?> €</td>
             <td>

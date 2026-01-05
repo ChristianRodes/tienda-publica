@@ -8,13 +8,12 @@ if (session_status() === PHP_SESSION_NONE) {
 <head>
     <meta charset="UTF-8">
     <title>Tienda Online</title>
-    <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
 
 <header>
     <h1>Tienda Online</h1>
-    <?php include 'menu.php'; ?>
+    <?php include __DIR__ . '/menu.php'; ?>
 </header>
 
 <hr>
