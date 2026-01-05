@@ -1,120 +1,43 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require '../config/db.php';
-
-/* Inicializar carrito */
-if (!isset($_SESSION['carrito'])) {
-    $_SESSION['carrito'] = [];
-}
-
-/* ===============================
-   AÑADIR PRODUCTO DESDE LA TIENDA
-   =============================== */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
-    $id = (int) $_POST['id'];
-
-    if (isset($_SESSION['carrito'][$id])) {
-        $_SESSION['carrito'][$id]['cantidad']++;
-    } else {
-        $stmt = $pdo->prepare("SELECT nombre, precio FROM productos WHERE id = :id AND activo = 1");
-        $stmt->execute([':id' => $id]);
-        $producto = $stmt->fetch();
-
-        if ($producto) {
-            $_SESSION['carrito'][$id] = [
-                'nombre' => $producto['nombre'],
-                'precio' => $producto['precio'],
-                'cantidad' => 1
-            ];
-        }
-    }
-
-    // Mensaje flash
-    $_SESSION['mensaje_carrito'] = 'Producto añadido al carrito';
-
-    // Redirección según origen
-    if (isset($_POST['redirect']) && $_POST['redirect'] === 'index') {
-        header('Location: index.php');
-        exit;
-    }
-}
-
-/* ===============================
-   SUMAR / RESTAR / ELIMINAR
-   =============================== */
-if (isset($_GET['sumar'])) {
-    $id = (int) $_GET['sumar'];
-    if (isset($_SESSION['carrito'][$id])) {
-        $_SESSION['carrito'][$id]['cantidad']++;
-    }
-}
-
-if (isset($_GET['restar'])) {
-    $id = (int) $_GET['restar'];
-    if (isset($_SESSION['carrito'][$id])) {
-        $_SESSION['carrito'][$id]['cantidad']--;
-        if ($_SESSION['carrito'][$id]['cantidad'] <= 0) {
-            unset($_SESSION['carrito'][$id]);
-        }
-    }
-}
-
-if (isset($_GET['eliminar'])) {
-    $id = (int) $_GET['eliminar'];
-    unset($_SESSION['carrito'][$id]);
-}
-
 include '../includes/header.php';
+
+/* Obtener productos activos */
+$stmt = $pdo->query("SELECT * FROM productos WHERE activo = 1");
+$productos = $stmt->fetchAll();
 ?>
 
-<h2>Carrito de la compra</h2>
+<h2>Tienda</h2>
 
-<?php if (empty($_SESSION['carrito'])): ?>
-    <p>El carrito está vacío.</p>
-    <a href="index.php">Volver a la tienda</a>
+<?php if (isset($_SESSION['mensaje_carrito'])): ?>
+    <p style="background:#d4edda; padding:10px;">
+        <?= $_SESSION['mensaje_carrito'] ?>
+        (<?= array_sum(array_column($_SESSION['carrito'], 'cantidad')) ?> artículos)
+        – <a href="carrito.php">Ver carrito</a>
+    </p>
+    <?php unset($_SESSION['mensaje_carrito']); ?>
+<?php endif; ?>
+
+<?php if (empty($productos)): ?>
+    <p>No hay productos disponibles.</p>
 <?php else: ?>
+    <?php foreach ($productos as $producto): ?>
+        <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
+            <h3><?= htmlspecialchars($producto['nombre']) ?></h3>
+            <p><?= htmlspecialchars($producto['descripcion']) ?></p>
+            <strong><?= number_format($producto['precio'], 2) ?> €</strong>
 
-<table border="1" cellpadding="6">
-    <tr>
-        <th>Producto</th>
-        <th>Precio</th>
-        <th>Cantidad</th>
-        <th>Subtotal</th>
-        <th>Acción</th>
-    </tr>
-
-    <?php
-    $total = 0;
-    foreach ($_SESSION['carrito'] as $id => $item):
-        $subtotal = $item['precio'] * $item['cantidad'];
-        $total += $subtotal;
-    ?>
-        <tr>
-            <td><?= htmlspecialchars($item['nombre']) ?></td>
-            <td><?= number_format($item['precio'], 2) ?> €</td>
-            <td>
-                <a href="?restar=<?= $id ?>">➖</a>
-                <?= $item['cantidad'] ?>
-                <a href="?sumar=<?= $id ?>">➕</a>
-            </td>
-            <td><?= number_format($subtotal, 2) ?> €</td>
-            <td>
-                <a href="?eliminar=<?= $id ?>">Eliminar</a>
-            </td>
-        </tr>
+            <form method="post" action="carrito.php">
+                <input type="hidden" name="id" value="<?= $producto['id'] ?>">
+                <input type="hidden" name="redirect" value="index">
+                <button type="submit">Añadir al carrito</button>
+            </form>
+        </div>
     <?php endforeach; ?>
-
-    <tr>
-        <td colspan="3"><strong>Total</strong></td>
-        <td colspan="2"><strong><?= number_format($total, 2) ?> €</strong></td>
-    </tr>
-</table>
-
-<br>
-
-<a href="index.php">Seguir comprando</a> |
-<a href="finalizar_compra.php">Finalizar compra</a>
-
 <?php endif; ?>
 
 <?php include '../includes/footer.php'; ?>
